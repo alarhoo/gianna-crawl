@@ -112,8 +112,6 @@ async function crawlOneItem() {
     /* --------------------------------
      * STEP 4: Preview iframe URL
      * -------------------------------- */
-    $('#loadPlayer').click()
-
     let previewIframeUrl = $('#player iframe').attr('src') || null
 
     // Fallback: inline JS (what onclick injects)
