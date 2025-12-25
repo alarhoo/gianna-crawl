@@ -2,6 +2,7 @@ import { db, isAlreadyCrawled } from '../db/index.js'
 import { crawlDetail } from './worker.js'
 import { rateLimit } from '../utils/rateLimiter.js'
 import { retryWithBackoff } from '../utils/retry.js'
+import { recordFailure, failures } from './failures.js'
 
 const CONCURRENCY = Number(process.env.MAX_CONCURRENCY || 3)
 const RATE_DELAY_MS = Number(process.env.RATE_DELAY_MS || 1500)
@@ -13,9 +14,9 @@ export async function run(context, items) {
   async function worker(workerId) {
     const page = await context.newPage()
 
-    while (queue.length > 0) {
+    while (true) {
       const item = queue.shift()
-      if (!item) break // 🛡 safety guard
+      if (!item) break
 
       console.log(`\n[Worker ${workerId}] ▶ DETAIL CRAWL`)
       console.log(`[Worker ${workerId}] URL:`, item.detailUrl)
@@ -27,8 +28,8 @@ export async function run(context, items) {
         continue
       }
 
-      console.log(`\n[Worker ${workerId}] Crawling:`)
-      console.log(`  ${item.detailUrl}`)
+      // ⏱ Rate limit before next request
+      await rateLimit(RATE_DELAY_MS)
 
       let data
 
@@ -43,6 +44,11 @@ export async function run(context, items) {
         })
       } catch (err) {
         console.error(`[Worker ${workerId}] ❌ Failed after retries:`, err.message)
+        recordFailure({
+          detailUrl: item.detailUrl,
+          stage: 'detail-crawl',
+          error: err,
+        })
         continue
       }
 
@@ -92,5 +98,11 @@ export async function run(context, items) {
 
   await Promise.all(workers)
 
+  if (failures.length > 0) {
+    console.log('\n❌ FAILURE REPORT')
+    console.table(failures)
+  } else {
+    console.log('\n✅ No failures recorded')
+  }
   console.log('\n🎉 Parallel crawl complete')
 }

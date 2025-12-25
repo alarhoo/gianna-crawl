@@ -1,5 +1,5 @@
 import { safeText, safeAllTexts, extractReleaseDate } from '../utils/text.js'
-import { buildFileName } from '../utils/filename.js'
+import { buildFileName, sanitizeFilename } from '../utils/filename.js'
 import { rateLimit } from '../utils/rateLimiter.js'
 
 export async function crawlDetail(page, item) {
@@ -86,13 +86,14 @@ export async function crawlDetail(page, item) {
     }
   }
 
-  const fileName = buildFileName({
+  const rawFileName = buildFileName({
     releaseDate,
     studio,
     series,
     title,
     actors,
   })
+  const fileName = sanitizeFilename(rawFileName)
 
   console.log('✔ filename:', fileName)
 
