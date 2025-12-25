@@ -16,10 +16,7 @@ export async function crawlDetail(page, item) {
   // await page.goto(item.detailUrl, { waitUntil: 'networkidle' })
   await rateLimit(process.env.RATE_DELAY_MS)
 
-  await page.goto(item.detailUrl, {
-    waitUntil: 'domcontentloaded',
-    timeout: 60000,
-  })
+  await page.goto(item.detailUrl, { waitUntil: 'networkidle' })
   console.log('✔ Page loaded')
 
   const sourceTabTitle = (await page.title())?.trim()
