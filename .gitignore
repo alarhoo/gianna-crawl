@@ -4,3 +4,5 @@
 # Local crawler data
 *.db
 *.sqlite
+
+failed-items.json
