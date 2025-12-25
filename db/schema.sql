@@ -12,5 +12,6 @@ CREATE TABLE IF NOT EXISTS videos (
   previewIframeUrl TEXT,
   hoverPreviewM3U8 TEXT,
   fileName TEXT,
+	sourceTabTitle TEXT,
   detailUrl TEXT UNIQUE
 );
