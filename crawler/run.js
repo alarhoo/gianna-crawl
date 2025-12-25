@@ -1,5 +1,6 @@
 import { db, isAlreadyCrawled } from '../db/index.js'
 import { crawlDetail } from './worker.js'
+import { retryWithBackoff } from '../utils/retry.js'
 
 const CONCURRENCY = 4
 
@@ -25,10 +26,18 @@ export async function run(context, items) {
       console.log(`  ${item.detailUrl}`)
 
       let data
+
       try {
-        data = await crawlDetail(page, item)
+        data = await retryWithBackoff(() => crawlDetail(page, item), {
+          retries: 3,
+          baseDelayMs: 1000,
+          factor: 2,
+          onRetry: (err, attempt, delay) => {
+            console.warn(`[Worker ${workerId}] ⚠ Retry ${attempt}/3 after ${delay}ms`, `→ ${err.message}`)
+          },
+        })
       } catch (err) {
-        console.error(`[Worker ${workerId}] ❌ Error:`, err.message)
+        console.error(`[Worker ${workerId}] ❌ Failed after retries:`, err.message)
         continue
       }
 
