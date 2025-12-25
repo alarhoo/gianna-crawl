@@ -1,4 +1,4 @@
-import { db } from '../db/index.js'
+import { db, isAlreadyCrawled } from '../db/index.js'
 import { crawlDetail } from './worker.js'
 
 const CONCURRENCY = 4
@@ -13,6 +13,13 @@ export async function run(context, items) {
     while (queue.length > 0) {
       const item = queue.shift()
       if (!item) break
+
+      // 🔁 RESUME-FROM-DB CHECK
+      const alreadyDone = await isAlreadyCrawled(item.detailUrl)
+      if (alreadyDone) {
+        console.log(`[Worker ${workerId}] ⏭ Skipping (already crawled)`)
+        continue
+      }
 
       console.log(`\n[Worker ${workerId}] Crawling:`)
       console.log(`  ${item.detailUrl}`)
