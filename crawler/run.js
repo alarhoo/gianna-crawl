@@ -37,8 +37,8 @@ export async function run(context, items) {
 
     await db.run(
       `INSERT OR IGNORE INTO videos
-       (title, subtitle, releaseDate, studio, series, director, actors, tags, thumbnailSrcSet, previewIframeUrl, hoverPreviewM3U8, fileName, detailUrl)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (title, subtitle, releaseDate, studio, series, director, actors, tags, thumbnailSrcSet, previewIframeUrl, hoverPreviewM3U8, fileName, sourceTabTitle, detailUrl)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.title,
         data.subtitle,
@@ -52,6 +52,7 @@ export async function run(context, items) {
         data.previewIframeUrl,
         data.hoverPreviewM3U8,
         data.fileName,
+        data.sourceTabTitle,
         data.detailUrl,
       ]
     )
