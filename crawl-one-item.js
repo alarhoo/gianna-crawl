@@ -57,10 +57,12 @@ async function crawlOneItem() {
      * -------------------------------- */
     const gridRes = await client.get(GRID_PAGE_URL)
     const $grid = load(gridRes.data)
+    console.log($grid)
 
     const firstItem = $grid('.list-page-grid-container .grid-item').first()
     if (!firstItem.length) throw new Error('No grid items found')
 
+    console.log(firstItem)
     const widget = firstItem.find('.scene-widget.store-view')
 
     const dataMasterId = widget.attr('data-master-id')
@@ -151,7 +153,7 @@ async function crawlOneItem() {
         hoverPreviewM3U8,
         previewIframeUrl,
         fileName,
-        sourceUrl: detailUrl,
+        detailUrl: detailUrl,
       },
       { depth: null }
     )

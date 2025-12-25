@@ -22,18 +22,26 @@ const formatDate = (input) => {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
 }
 
+function parseSrcSet(srcset) {
+  if (!srcset) return null
+  const result = {}
+  srcset.split(',').forEach((entry) => {
+    const [url, size] = entry.trim().split(/\s+/)
+    const width = size?.replace('w', '')
+    if (url && width) result[width] = url
+  })
+  return result
+}
+
 /* ------------------------------------
  * MAIN
  * ---------------------------------- */
-async function crawlOneItem() {
-  const browser = await chromium.launch({
-    headless: true, // set false + slowMo to debug
-  })
-
+async function crawlAllItems() {
+  const browser = await chromium.launch({ headless: true })
   const context = await browser.newContext()
 
   /* --------------------------------
-   * STEP 0: Age gate cookies
+   * Age gate cookies
    * -------------------------------- */
   await context.addCookies([
     { name: 'ageConfirmed', value: 'true', domain: COOKIE_DOMAIN, path: '/' },
@@ -45,86 +53,77 @@ async function crawlOneItem() {
   const page = await context.newPage()
 
   /* --------------------------------
-   * STEP 1: Load grid page
+   * Load grid page
    * -------------------------------- */
   await page.goto(GRID_URL, { waitUntil: 'networkidle' })
 
-  console.log('Grid page title:', await page.title())
+  await page.waitForSelector('.list-page-grid-container', {
+    state: 'attached',
+    timeout: 30000,
+  })
+
+  const items = page.locator('.list-page-grid-container .grid-item')
+  const count = await items.count()
+
+  console.log(`Found ${count} grid items`)
+
+  const results = []
 
   /* --------------------------------
-   * WAIT FOR GRID CONTAINER (KEY FIX)
+   * LOOP ITEMS
    * -------------------------------- */
-  const gridContainerSelector = '.list-page-grid-container'
+  for (let i = 0; i < count; i++) {
+    console.log(`\nProcessing item ${i + 1}/${count}`)
 
-  try {
-    await page.waitForSelector(gridContainerSelector, {
-      state: 'attached',
-      timeout: 30000,
-    })
-  } catch {
-    const html = await page.content()
-    require('fs').writeFileSync('debug-grid.html', html)
-    throw new Error('Grid container not found. HTML dumped to debug-grid.html')
-  }
+    const item = items.nth(i)
 
-  const firstItem = page.locator('.list-page-grid-container .grid-item').first()
+    const widget = item.locator('.scene-widget.store-view')
+    const dataMasterId = await widget.getAttribute('data-master-id')
+    const dataSceneId = await widget.getAttribute('data-scene-id')
 
-  /* --------------------------------
-   * GRID DATA
-   * -------------------------------- */
-  const widget = firstItem.locator('.scene-widget.store-view')
+    const rawSrcSet = await item.locator('img.screenshot.img-full-fluid').getAttribute('srcset')
 
-  const dataMasterId = await widget.getAttribute('data-master-id')
-  const dataSceneId = await widget.getAttribute('data-scene-id')
+    const thumbnailSrcSet = parseSrcSet(rawSrcSet)
 
-  const thumbnailSrcSet = await firstItem.locator('img.screenshot.img-full-fluid').getAttribute('srcset')
+    const detailHref = await item.locator('a.scene-title').getAttribute('href')
 
-  const detailHref = await firstItem.locator('a.scene-title').getAttribute('href')
+    if (!detailHref) continue
 
-  if (!detailHref) throw new Error('Detail page link missing')
+    const detailUrl = `${BASE_URL}${detailHref}`
 
-  const detailUrl = `${BASE_URL}${detailHref}`
+    const hoverPreviewM3U8 = `https://myvideo.com/hls/previewscene/${dataMasterId}/${dataSceneId}/index-f1-v1.m3u8`
 
-  const hoverPreviewM3U8 = `https://myvideo.com/hls/previewscene/${dataMasterId}/${dataSceneId}/index-f1-v1.m3u8`
+    /* ------------------------------
+     * Detail page
+     * ------------------------------ */
+    await page.goto(detailUrl, { waitUntil: 'networkidle' })
 
-  /* --------------------------------
-   * STEP 2: Detail page
-   * -------------------------------- */
-  await page.goto(detailUrl, { waitUntil: 'networkidle' })
+    const sourceTabTitle = clean(await page.title())
+    const title = clean(await page.locator('.video-title h1.description').innerText())
+    const subtitle = clean(await page.locator('.video-title p').innerText())
 
-  const sourceTabTitle = clean(await page.title())
+    const rawDate = clean(await page.locator('.release-date').first().innerText()).replace('Released:', '')
 
-  const title = clean(await page.locator('.video-title h1.description').innerText())
+    const releaseDate = formatDate(rawDate)
 
-  const subtitle = clean(await page.locator('.video-title p').innerText())
+    const studio = clean(await page.locator('.studio a').innerText())
+    const series = clean(await page.locator('.series a').innerText())
+    const director = clean(await page.locator('.director a').innerText())
 
-  const rawDate = clean(await page.locator('.release-date').first().innerText()).replace('Released:', '')
+    const tags = (await page.locator('.tags a').allInnerTexts()).map(clean)
+    const actors = (await page.locator('.video-performer .performer-name').allInnerTexts()).map(clean)
 
-  const releaseDate = formatDate(rawDate)
+    /* ------------------------------
+     * Preview click → iframe
+     * ------------------------------ */
+    await page.locator('#loadPlayer').click()
+    await page.waitForSelector('#player iframe', { timeout: 15000 })
 
-  const studio = clean(await page.locator('.studio a').innerText())
-  const series = clean(await page.locator('.series a').innerText())
-  const director = clean(await page.locator('.director a').innerText())
+    const previewIframeUrl = await page.locator('#player iframe').getAttribute('src')
 
-  const tags = (await page.locator('.tags a').allInnerTexts()).map(clean)
-  const actors = (await page.locator('.video-performer .performer-name').allInnerTexts()).map(clean)
+    const fileName = `${releaseDate} - ${studio} - ${series} (${title}) [${actors.join(', ')}]`
 
-  /* --------------------------------
-   * CLICK PREVIEW → iframe
-   * -------------------------------- */
-  await page.locator('#loadPlayer').click()
-
-  await page.waitForSelector('#player iframe', { timeout: 15000 })
-
-  const previewIframeUrl = await page.locator('#player iframe').getAttribute('src')
-
-  /* --------------------------------
-   * FINAL OBJECT
-   * -------------------------------- */
-  const fileName = `${releaseDate} - ${studio} - ${series} (${title}) [${actors.join(', ')}]`
-
-  console.dir(
-    {
+    results.push({
       sourceTabTitle,
       title,
       subtitle,
@@ -140,15 +139,26 @@ async function crawlOneItem() {
       hoverPreviewM3U8,
       previewIframeUrl,
       fileName,
-      sourceUrl: detailUrl,
-    },
-    { depth: null }
-  )
+      detailUrl: detailUrl,
+    })
+
+    /* ------------------------------
+     * Back to grid page
+     * ------------------------------ */
+    await page.goto(GRID_URL, { waitUntil: 'networkidle' })
+    await page.waitForSelector('.list-page-grid-container', {
+      state: 'attached',
+      timeout: 30000,
+    })
+  }
+
+  console.log('\n✅ FINAL RESULTS\n')
+  console.dir(results, { depth: null })
 
   await browser.close()
 }
 
-crawlOneItem().catch((err) => {
+crawlAllItems().catch((err) => {
   console.error('❌ Crawl failed:', err.message)
   process.exit(1)
 })
