@@ -1,11 +1,13 @@
 import { db, isAlreadyCrawled } from '../db/index.js'
 import { crawlDetail } from './worker.js'
+import { rateLimit } from '../utils/rateLimiter.js'
 import { retryWithBackoff } from '../utils/retry.js'
 
-const CONCURRENCY = 4
+const CONCURRENCY = Number(process.env.MAX_CONCURRENCY || 3)
+const RATE_DELAY_MS = Number(process.env.RATE_DELAY_MS || 1500)
 
 export async function run(context, items) {
-  console.log(`\n▶ Starting parallel crawl for ${items.length} items`)
+  console.log(`\n▶ Starting crawl with ${CONCURRENCY} workers`)
   const queue = [...items]
 
   async function worker(workerId) {
@@ -13,7 +15,10 @@ export async function run(context, items) {
 
     while (queue.length > 0) {
       const item = queue.shift()
-      if (!item) break
+      if (!item) break // 🛡 safety guard
+
+      console.log(`\n[Worker ${workerId}] ▶ DETAIL CRAWL`)
+      console.log(`[Worker ${workerId}] URL:`, item.detailUrl)
 
       // 🔁 RESUME-FROM-DB CHECK
       const alreadyDone = await isAlreadyCrawled(item.detailUrl)
@@ -42,7 +47,7 @@ export async function run(context, items) {
       }
 
       if (!data || !data.title) {
-        console.warn(`[Worker ${workerId}] ⚠ Skipped (no title)`)
+        console.warn(`[Worker ${workerId}] ⚠ Skipping (invalid data)`)
         continue
       }
 
@@ -72,6 +77,9 @@ export async function run(context, items) {
       )
 
       console.log(`[Worker ${workerId}] ✔ Saved`)
+
+      // ⏱ Rate limit between requests
+      await rateLimit(RATE_DELAY_MS)
     }
 
     await page.close()

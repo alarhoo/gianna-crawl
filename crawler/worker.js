@@ -1,5 +1,6 @@
 import { safeText, safeAllTexts, extractReleaseDate } from '../utils/text.js'
 import { buildFileName } from '../utils/filename.js'
+import { rateLimit } from '../utils/rateLimiter.js'
 
 export async function crawlDetail(page, item) {
   console.log('\n==============================')
@@ -12,7 +13,13 @@ export async function crawlDetail(page, item) {
     return null
   }
 
-  await page.goto(item.detailUrl, { waitUntil: 'networkidle' })
+  // await page.goto(item.detailUrl, { waitUntil: 'networkidle' })
+  await rateLimit(process.env.RATE_DELAY_MS)
+
+  await page.goto(item.detailUrl, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60000,
+  })
   console.log('✔ Page loaded')
 
   const sourceTabTitle = (await page.title())?.trim()
