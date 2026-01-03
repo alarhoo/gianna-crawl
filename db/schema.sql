@@ -13,5 +13,9 @@ CREATE TABLE IF NOT EXISTS videos (
   hoverPreviewM3U8 TEXT,
   fileName TEXT,
 	sourceTabTitle TEXT,
-  detailUrl TEXT UNIQUE
+	videoLengthMinutes TEXT,
+	videoLengthRaw TEXT,
+  detailUrl TEXT UNIQUE,
+	hqPreviewStatus TEXT,
+	hqPreviewLastError TEXT
 );

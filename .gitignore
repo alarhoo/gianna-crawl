@@ -6,3 +6,5 @@
 *.sqlite
 
 failed-items.json
+
+/downloads

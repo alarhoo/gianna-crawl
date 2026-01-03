@@ -1,4 +1,4 @@
-import { safeText, safeAllTexts, extractReleaseDate } from '../utils/text.js'
+import { safeText, safeAllTexts, extractReleaseDate, extractVideoLength } from '../utils/text.js'
 import { buildFileName, sanitizeFilename } from '../utils/filename.js'
 import { rateLimit } from '../utils/rateLimiter.js'
 
@@ -46,9 +46,12 @@ export async function crawlDetail(page, item) {
   const tags = await safeAllTexts(page, '.tags a')
   console.log('  tags:', tags)
 
+  const videoLength = await extractVideoLength(page)
+  console.log('  videoLength:', videoLength)
+
   const hoverPreviewM3U8 =
     item.dataMasterId && item.dataSceneId
-      ? `${process.env.BASE_URL}/hls/previewscene/${item.dataMasterId}/${item.dataSceneId}/index-f1-v1.m3u8`
+      ? `${process.env.PREVIEW_BASE_URL}/hls/previewscene/${item.dataMasterId}/${item.dataSceneId}/index-f1-v1.m3u8`
       : null
   console.log('  hoverPreviewM3U8:', hoverPreviewM3U8)
 
@@ -109,6 +112,7 @@ export async function crawlDetail(page, item) {
     director,
     actors,
     tags,
+    videoLength,
     dataMasterId: item.dataMasterId,
     dataSceneId: item.dataSceneId,
     thumbnailSrcSet: item.thumbnailSrcSet,

@@ -26,3 +26,29 @@ export async function extractReleaseDate(page, selector) {
   }
   return null
 }
+
+export async function extractVideoLength(page) {
+  const nodes = await page.locator('.release-date').all()
+
+  for (const node of nodes) {
+    const text = (await node.textContent())?.trim()
+    if (!text) continue
+
+    if (text.startsWith('Length:')) {
+      // Example: "Length: 8 min"
+      const raw = text.replace('Length:', '').trim()
+
+      const match = raw.match(/(\d+)\s*min/i)
+      if (!match) {
+        return { raw }
+      }
+
+      return {
+        minutes: Number(match[1]),
+        raw,
+      }
+    }
+  }
+
+  return null
+}

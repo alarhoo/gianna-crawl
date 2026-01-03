@@ -70,10 +70,10 @@ export async function run(context, items) {
       await db.run(
         `INSERT OR IGNORE INTO videos
          (title, subtitle, releaseDate, studio, series, director,
-          actors, tags, thumbnailSrcSet,
+          actors, tags, videoLengthMinutes, videoLengthRaw, thumbnailSrcSet,
           hoverPreviewM3U8, previewIframeUrl,
           fileName, detailUrl, sourceTabTitle)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           data.title,
           data.subtitle,
@@ -83,6 +83,8 @@ export async function run(context, items) {
           data.director,
           data.actors.join(', '),
           data.tags.join(', '),
+          data.videoLength?.minutes ?? null,
+          data.videoLength?.raw ?? null,
           JSON.stringify(data.thumbnailSrcSet),
           data.hoverPreviewM3U8,
           data.previewIframeUrl,
