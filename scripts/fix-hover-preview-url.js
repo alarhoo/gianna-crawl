@@ -1,7 +1,7 @@
 import { db } from '../db/index.js'
 
 const OLD_BASE = 'https://elegantangel.empirestores.co'
-const NEW_BASE = 'https://video.adultempire.com'
+const NEW_BASE = 'https://video.aduempire.com'
 
 async function fix() {
   const res = await db.run(
@@ -14,7 +14,7 @@ async function fix() {
     )
     WHERE hoverPreviewM3U8 LIKE ?
     `,
-    [OLD_BASE, NEW_BASE, `${OLD_BASE}%`]
+    [OLD_BASE, NEW_BASE, `${OLD_BASE}%`],
   )
 
   console.log('Rows updated:', res.changes)

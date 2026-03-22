@@ -1,21 +1,38 @@
-CREATE TABLE IF NOT EXISTS videos (
+CREATE TABLE IF NOT EXISTS scenes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  -- ---------------------------------
+  -- Source identity (important)
+  -- ---------------------------------
+  sourceSite TEXT NOT NULL,                 -- 'siteB'
+  performerId TEXT NOT NULL,                -- 1398
+  performerSlug TEXT NOT NULL,              -- lisa-ann
+  sourceSceneUrl TEXT NOT NULL UNIQUE,
+  sourceMovieUrl TEXT,
+
+  -- ---------------------------------
+  -- Core searchable fields
+  -- ---------------------------------
   title TEXT,
-  subtitle TEXT,
-  releaseDate TEXT,
+  movieTitle TEXT,
   studio TEXT,
   series TEXT,
-  director TEXT,
-  actors TEXT,
-  tags TEXT,
-  thumbnailSrcSet TEXT,
-  previewIframeUrl TEXT,
-  hoverPreviewM3U8 TEXT,
-  fileName TEXT,
-	sourceTabTitle TEXT,
-	videoLengthMinutes TEXT,
-	videoLengthRaw TEXT,
-  detailUrl TEXT UNIQUE,
-	hqPreviewStatus TEXT,
-	hqPreviewLastError TEXT
+
+  releaseDate TEXT,                         -- YYYY-MM-DD
+  productionYear INTEGER,
+  videoLengthMinutes INTEGER,
+
+  -- ---------------------------------
+  -- Media status flags
+  -- ---------------------------------
+  trailerStatus TEXT,                       -- success | failed | null
+  trailerLastError TEXT,
+
+  -- ---------------------------------
+  -- Canonical payload
+  -- ---------------------------------
+  sceneData JSON NOT NULL,                  -- full CanonicalScene object
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
 );
